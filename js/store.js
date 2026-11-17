@@ -183,14 +183,23 @@ const Store = (function () {
     return `${location.origin}${location.pathname}#family=${code}`;
   }
 
+  const REPEATS = ["daily", "weekly", "monthly", "yearly"];
+
   function clean(e) {
+    const repeat = REPEATS.includes(e.repeat) ? e.repeat : "";
     return {
       title: String(e.title || "").slice(0, 40),
       member: e.member,
       start: e.start,
-      end: e.end || "",
+      end: repeat ? "" : e.end || "", // 반복 일정은 하루짜리만
       time: e.time || "",
       memo: String(e.memo || "").slice(0, 200),
+      repeat,
+      repeatDays: repeat === "weekly" && Array.isArray(e.repeatDays)
+        ? [...new Set(e.repeatDays)].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6).sort()
+        : [],
+      repeatUntil: repeat ? e.repeatUntil || "" : "",
+      exdates: repeat && Array.isArray(e.exdates) ? [...new Set(e.exdates)].sort().slice(-366) : [],
     };
   }
 

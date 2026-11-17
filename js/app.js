@@ -14,7 +14,10 @@
     events: [],
     visible: new Set(MEMBERS.map((m) => m.id)),
     openDay: null, // 일정 목록 팝업에 열려 있는 날짜
-    editingId: null,
+    editingId: null, // 고치는 중인 일정 id (새 일정이면 null)
+    editMode: "new", // new | edit | all(반복 전체) | one(반복 중 이 날만)
+    occurrence: null, // 반복 일정에서 고른 날짜
+    scopeEvent: null, // 이 날만 / 모든 반복 창에 열린 일정
   };
 
   // ---------- 날짜 도우미 ----------
@@ -30,13 +33,15 @@
     return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAY[d.getDay()]})`;
   }
 
-  /** 그날 보여줄 일정 (여러 날 일정 포함, 시간 순) */
+  /** 그날 보여줄 일정 (여러 날 일정, 반복 일정 포함, 시간 순) */
   function eventsOn(key) {
     return state.events
       .filter((e) => state.visible.has(e.member))
-      .filter((e) => e.start <= key && key <= (e.end || e.start))
+      .filter((e) => occursOn(e, key))
+      .map((e) => (e.repeat ? { ...e, occurrence: key } : e))
       .sort((a, b) => (a.time || "").localeCompare(b.time || "") || a.title.localeCompare(b.title));
   }
+  const seriesOf = (e) => state.events.find((x) => x.id === e.id) || e;
 
   // ---------- 필터 ----------
   function renderFilters() {
@@ -123,6 +128,13 @@
         t.textContent = e.time;
         p.append(t);
       }
+      if (e.repeat) {
+        const r = document.createElement("span");
+        r.className = "repeat-icon";
+        r.textContent = "↻";
+        r.setAttribute("aria-label", "반복");
+        p.append(r);
+      }
       p.append(e.title);
       cell.append(p);
     });
@@ -167,6 +179,7 @@
         b.append(who, e.title);
         const metaParts = [];
         if (e.time) metaParts.push(e.time);
+        if (e.repeat) metaParts.push(`↻ ${describeRepeat(e)}`);
         if (e.end && e.end !== e.start) metaParts.push(`${labelOf(e.start)} ~ ${labelOf(e.end)}`);
         if (e.memo) metaParts.push(e.memo);
         if (metaParts.length) {
@@ -175,7 +188,7 @@
           meta.textContent = metaParts.join(" · ");
           b.append(meta);
         }
-        b.addEventListener("click", () => openForm(e));
+        b.addEventListener("click", () => (e.repeat ? openScope(e) : openForm(e, { mode: "edit" })));
         li.append(b);
         return li;
       })
@@ -201,21 +214,81 @@
     );
   }
 
-  function openForm(event, dateKey) {
+  function renderWeekdayPick() {
+    const order = [1, 2, 3, 4, 5, 6, 0]; // 월요일부터
+    $("#weekdayPick").replaceChildren(
+      ...order.map((d) => {
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.name = "repeatDays";
+        input.value = d;
+        const text = document.createElement("span");
+        text.textContent = WEEKDAY[d];
+        if (d === 0) text.className = "sun";
+        if (d === 6) text.className = "sat";
+        label.append(input, text);
+        return label;
+      })
+    );
+  }
+
+  /** 반복 선택에 따라 요일 · 끝나는 날 · 끝 날짜 칸을 보이거나 숨긴다 */
+  function syncRepeatFields() {
     const form = $("#eventForm");
+    const repeat = form.repeat.value;
+    $("#repeatDaysField").hidden = repeat !== "weekly";
+    $("#repeatUntilField").hidden = !repeat;
+    $("#endField").hidden = Boolean(repeat); // 반복 일정은 하루짜리만
+    if (repeat) form.end.value = "";
+    // 매주를 고르면 시작 날짜의 요일을 미리 골라 둔다
+    const boxes = [...form.querySelectorAll('input[name="repeatDays"]')];
+    if (repeat === "weekly" && !boxes.some((b) => b.checked) && form.start.value) {
+      const dow = parseKey(form.start.value).getDay();
+      boxes.find((b) => Number(b.value) === dow).checked = true;
+    }
+  }
+
+  /**
+   * 일정 입력 창 열기
+   * opts.mode: new(새 일정) | edit(일반 일정 고치기) | all(반복 전체 고치기) | one(반복 중 이 날만 고치기)
+   */
+  function openForm(event, opts = {}) {
+    const form = $("#eventForm");
+    const mode = opts.mode || "new";
     form.reset();
     $("#formError").textContent = "";
-    state.editingId = event?.id || null;
-    $("#formTitle").textContent = event ? "일정 고치기" : "일정 추가";
-    $("#deleteBtn").hidden = !event;
+    state.editMode = mode;
+    state.editingId = mode === "edit" || mode === "all" ? event.id : null;
+    state.occurrence = opts.occurrence || null;
 
-    const e = event || { member: "family", start: dateKey || todayKey };
+    $("#formTitle").textContent = {
+      new: "일정 추가",
+      edit: "일정 고치기",
+      all: "모든 반복 일정 고치기",
+      one: "이 날 일정만 고치기",
+    }[mode];
+    $("#deleteBtn").hidden = !(mode === "edit" || mode === "all");
+    $("#repeatBox").hidden = mode === "one";
+    $("#occurrenceNote").hidden = mode !== "one";
+    if (mode === "one") {
+      $("#occurrenceNote").textContent = `${labelOf(opts.occurrence)} 하루만 바꿔요. 다른 날 반복은 그대로예요.`;
+    }
+
+    const e = event || { member: "family", start: opts.dateKey || todayKey };
     form.title.value = e.title || "";
-    form.start.value = e.start;
-    form.end.value = e.end && e.end !== e.start ? e.end : "";
+    form.start.value = mode === "one" ? opts.occurrence : e.start;
+    form.end.value = mode !== "one" && e.end && e.end !== e.start ? e.end : "";
     form.time.value = e.time || "";
     form.memo.value = e.memo || "";
     form.querySelector(`input[name="member"][value="${e.member}"]`).checked = true;
+    form.repeat.value = mode === "one" ? "" : e.repeat || "";
+    form.repeatUntil.value = e.repeatUntil || "";
+    (e.repeatDays || []).forEach((d) => {
+      const box = form.querySelector(`input[name="repeatDays"][value="${d}"]`);
+      if (box) box.checked = true;
+    });
+    syncRepeatFields();
 
     $("#eventDialog").showModal();
     form.title.focus();
@@ -224,29 +297,74 @@
   function onSubmit(ev) {
     ev.preventDefault();
     const form = ev.target;
+    const repeat = state.editMode === "one" ? "" : form.repeat.value;
     const data = {
       title: form.title.value.trim(),
       member: form.member.value,
       start: form.start.value,
-      end: form.end.value || "",
+      end: repeat ? "" : form.end.value || "",
       time: form.time.value || "",
       memo: form.memo.value.trim(),
+      repeat,
+      repeatDays: [...form.querySelectorAll('input[name="repeatDays"]:checked')].map((b) => Number(b.value)),
+      repeatUntil: repeat ? form.repeatUntil.value || "" : "",
     };
     if (!data.title) return showError("일정 이름을 적어주세요.");
     if (!data.start) return showError("시작 날짜를 골라주세요.");
     if (data.end && data.end < data.start) return showError("끝 날짜가 시작 날짜보다 빨라요.");
+    if (data.repeatUntil && data.repeatUntil < data.start) return showError("반복 끝나는 날이 시작 날짜보다 빨라요.");
     if (data.end === data.start) data.end = "";
-    if (state.editingId) data.id = state.editingId;
+    if (repeat === "weekly" && data.repeatDays.length === 0) data.repeatDays = [parseKey(data.start).getDay()];
 
-    Store.save(data); // 저장되면 Store가 onEvents로 새 목록을 알려준다
+    if (state.editMode === "one") {
+      // 반복에서 이 날을 빼고, 이 날만 따로 일반 일정으로 저장
+      const series = state.events.find((x) => x.id === state.scopeEvent.id);
+      Store.save(data);
+      if (series) Store.save({ ...series, exdates: [...(series.exdates || []), state.occurrence] });
+    } else {
+      if (state.editingId) {
+        data.id = state.editingId;
+        data.exdates = state.events.find((x) => x.id === state.editingId)?.exdates || [];
+      }
+      Store.save(data); // 저장되면 Store가 onEvents로 새 목록을 알려준다
+    }
     afterChange(data.start);
   }
 
   function onDelete() {
     if (!state.editingId) return;
-    if (!confirm("이 일정을 지울까요?")) return;
+    const msg = state.editMode === "all" ? "모든 반복 일정을 지울까요?" : "이 일정을 지울까요?";
+    if (!confirm(msg)) return;
     Store.remove(state.editingId);
     afterChange();
+  }
+
+  // ---------- 반복 일정: 이 날만 / 모든 반복 ----------
+  function openScope(e) {
+    state.scopeEvent = e;
+    $("#scopeTitle").textContent = e.title;
+    $("#scopeRepeat").textContent = `↻ ${describeRepeat(e)}`;
+    const day = labelOf(e.occurrence);
+    $("#editOneBtn").textContent = `${day} 일정만 고치기`;
+    $("#deleteOneBtn").textContent = `${day}만 지우기`;
+    $("#scopeDialog").showModal();
+  }
+
+  function scopeAction(action) {
+    const e = state.scopeEvent;
+    const series = seriesOf(e);
+    $("#scopeDialog").close();
+    if (action === "editOne") openForm(series, { mode: "one", occurrence: e.occurrence });
+    if (action === "editAll") openForm(series, { mode: "all" });
+    if (action === "deleteOne") {
+      Store.save({ ...series, exdates: [...(series.exdates || []), e.occurrence] });
+      toast(`${labelOf(e.occurrence)} 일정을 지웠어요.`);
+    }
+    if (action === "deleteAll") {
+      if (!confirm("모든 반복 일정을 지울까요?")) return;
+      Store.remove(series.id);
+      toast("반복 일정을 모두 지웠어요.");
+    }
   }
 
   function afterChange(jumpTo) {
@@ -354,8 +472,14 @@
     state.month = today.getMonth();
     renderGrid();
   });
-  $("#addBtn").addEventListener("click", () => openForm(null, todayKey));
-  $("#dayAddBtn").addEventListener("click", () => openForm(null, state.openDay));
+  $("#addBtn").addEventListener("click", () => openForm(null, { dateKey: todayKey }));
+  $("#dayAddBtn").addEventListener("click", () => openForm(null, { dateKey: state.openDay }));
+  $("#eventForm").repeat.addEventListener("change", syncRepeatFields);
+  $("#eventForm").start.addEventListener("change", syncRepeatFields);
+  $("#editOneBtn").addEventListener("click", () => scopeAction("editOne"));
+  $("#editAllBtn").addEventListener("click", () => scopeAction("editAll"));
+  $("#deleteOneBtn").addEventListener("click", () => scopeAction("deleteOne"));
+  $("#deleteAllBtn").addEventListener("click", () => scopeAction("deleteAll"));
   $("#eventForm").addEventListener("submit", onSubmit);
   $("#deleteBtn").addEventListener("click", onDelete);
 
@@ -395,6 +519,7 @@
 
   renderFilters();
   renderMemberPick();
+  renderWeekdayPick();
   renderGrid();
 
   let offeredMove = false;
