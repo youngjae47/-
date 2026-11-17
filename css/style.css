@@ -210,60 +210,185 @@ code { background: #f0ede7; padding: 1px 5px; border-radius: 4px; font-size: 13p
 .meter { height: 8px; border-radius: 99px; background: #eeebe5; overflow: hidden; }
 .meter span { display: block; height: 100%; background: var(--c); border-radius: 99px; transition: width 0.3s; }
 
-.gantt { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.gantt-head, .gantt-row { display: grid; grid-template-columns: 200px 1fr; }
-.gantt-head { border-bottom: 1px solid var(--line); background: #faf9f6; font-size: 13px; color: var(--muted); }
-.gantt-label-col { padding: 8px 12px; font-weight: 600; }
-.gantt-months { display: grid; grid-template-columns: repeat(12, 1fr); }
-.gantt-months span { text-align: center; padding: 8px 0; border-left: 1px solid var(--line); }
-.gantt-months span::after { content: attr(data-unit); }
-.gantt-months span.is-now { color: var(--c); font-weight: 700; }
-
-.gantt-cat {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px 6px; border-top: 1px solid var(--line);
+/* 툴바: 검색 · 연간/일별 */
+.goals-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.search-box { position: relative; }
+.search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.6; pointer-events: none; }
+.search-box input {
+  font: inherit; font-size: 14px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface);
+  padding: 7px 12px 7px 32px; width: 220px;
 }
+.search-box input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); padding: 2px; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: 5px 14px; font-size: 14px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--text); color: #fff; font-weight: 600; }
+
+/* 검색 결과 */
+.search-results {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 14px; margin-bottom: 12px;
+}
+.search-head { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
+.search-head b { color: var(--text); }
+.search-empty { margin: 0; color: var(--muted); font-size: 14px; }
+.search-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.search-item {
+  width: 100%; text-align: left; border: 1px solid var(--line); border-left: 4px solid var(--c);
+  background: var(--surface); border-radius: 10px; padding: 7px 10px;
+  display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: baseline;
+}
+.search-item:hover { background: #fbfaf7; }
+.search-who { font-size: 12px; font-weight: 700; color: var(--c); }
+.search-title { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-meta { grid-column: 2; font-size: 12.5px; color: var(--muted); }
+mark { background: #ffe58a; color: inherit; border-radius: 3px; padding: 0 1px; }
+
+/* 간트차트 */
+.gantt { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.gantt-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.gantt-inner {
+  --label-w: 220px;
+  --track-w: minmax(0, 1fr);
+  position: relative;
+  min-width: 100%;
+  width: max-content;
+}
+.gantt-inner:not(.is-daily) { width: 100%; }
+.gantt-head, .gantt-row, .gantt-cat, .gantt-empty-row {
+  display: grid; grid-template-columns: var(--label-w) var(--track-w);
+}
+.gantt-label {
+  position: sticky; left: 0; z-index: 3;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex; align-items: center; gap: 4px;
+  padding: 0 8px 0 4px; min-width: 0;
+}
+
+/* 머리줄 */
+.gantt-head { border-bottom: 1px solid var(--line); background: #faf9f6; font-size: 13px; color: var(--muted); }
+.gantt-head .gantt-label { background: #faf9f6; }
+.gantt-label-col { padding: 8px 12px; font-weight: 600; }
+.gantt-months { display: flex; }
+.gantt-months span { text-align: center; padding: 8px 0; border-left: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
+.gantt-months span:first-child { border-left: 0; }
+.gantt-months:not(.daily) span::after { content: attr(data-unit); }
+.gantt-months .is-now { color: var(--c); font-weight: 700; }
+.gantt-months.daily span { text-align: left; padding: 5px 0 3px; color: var(--text); flex: none; overflow: visible; }
+.gantt-months.daily b { position: sticky; left: calc(var(--label-w) + 8px); padding: 0 8px; font-weight: 600; }
+.gantt-months.daily .is-now b { color: var(--c); }
+.gantt-days { display: flex; border-top: 1px solid var(--line); }
+.gantt-day {
+  flex: none; width: var(--day-w); text-align: center; padding: 3px 0 4px;
+  border-left: 1px solid #efece6; line-height: 1.15; font-size: 12px;
+}
+.gantt-day.month-start { border-left-color: #cfc9bf; }
+.gantt-day b { display: block; font-weight: 600; color: var(--text); }
+.gantt-day i { display: block; font-style: normal; font-size: 10px; }
+.gantt-day.sun b, .gantt-day.sun i { color: var(--sun); }
+.gantt-day.sat b, .gantt-day.sat i { color: var(--sat); }
+.gantt-day.is-today { background: var(--c); }
+.gantt-day.is-today b, .gantt-day.is-today i { color: #fff; }
+
+/* 대분류 줄 */
+.gantt-cat { border-top: 1px solid var(--line); }
 .gantt-group:first-child .gantt-cat { border-top: 0; }
-.gantt-cat-name { font-weight: 700; }
+.gantt-cat-label { padding: 10px 8px 6px 12px; gap: 8px; }
+.gantt-cat-name { font-weight: 700; white-space: nowrap; }
 .gantt-cat-rate { color: var(--c); font-weight: 700; font-variant-numeric: tabular-nums; }
 .gantt-add {
-  margin-left: auto; border: 1px dashed var(--line); background: none;
-  border-radius: 999px; padding: 3px 10px; font-size: 13px; color: var(--muted);
+  margin-left: auto; border: 1px dashed #cfc9bf; background: none;
+  border-radius: 999px; width: 28px; height: 26px; font-size: 15px; line-height: 1; color: var(--muted); flex: none;
 }
 .gantt-add:hover { border-color: var(--c); color: var(--text); }
-.gantt-empty { margin: 0; padding: 4px 12px 12px; color: var(--muted); font-size: 14px; }
+.gantt-empty { color: var(--muted); font-size: 14px; padding: 6px 12px 12px 30px; }
 
-.gantt-row {
-  width: 100%; border: 0; background: none; text-align: left; padding: 0;
-  min-height: 40px; align-items: center;
+/* 목표 줄 */
+.gantt-row { min-height: 40px; position: relative; }
+.gantt-row:hover .gantt-label, .gantt-row:hover .gantt-track { background-color: #fbfaf7; }
+.gantt-handle {
+  border: 0; background: none; color: #b7b0a5; font-size: 16px; line-height: 1;
+  width: 22px; height: 32px; padding: 0; flex: none; cursor: grab; touch-action: none; border-radius: 6px;
 }
-.gantt-row:hover { background: #fbfaf7; }
-.gantt-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.gantt-label { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 22px; min-width: 0; }
+.gantt-handle:hover { color: var(--text); background: #f0ede7; }
+.gantt-handle:focus-visible { outline: 2px solid var(--accent); }
+.gantt-open {
+  flex: 1; min-width: 0; border: 0; background: none; text-align: left; padding: 6px 2px;
+  display: flex; align-items: center; gap: 8px; border-radius: 6px;
+}
+.gantt-open:focus-visible { outline: 2px solid var(--accent); }
 .gantt-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
 .gantt-rate { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .gantt-row.is-done .gantt-rate { color: var(--c); font-weight: 700; }
 
+.gantt-row.is-dragging { z-index: 6; opacity: 0.92; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); }
+.gantt-row.is-dragging .gantt-label, .gantt-row.is-dragging .gantt-track { background-color: #fff; }
+.gantt-row.is-dragging .gantt-handle { cursor: grabbing; }
+.drop-line {
+  position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px;
+  background: var(--accent); z-index: 7; pointer-events: none;
+}
+.gantt-row.flash .gantt-label, .gantt-row.flash .gantt-track { animation: flash 1.6s ease-out; }
+@keyframes flash { 0%, 30% { background-color: #fff1b8; } 100% { background-color: transparent; } }
+
+/* 막대 칸 */
 .gantt-track {
-  position: relative; height: 40px;
+  position: relative; min-height: 40px;
   background-image: linear-gradient(to right, var(--line) 1px, transparent 1px);
   background-size: calc(100% / 12) 100%;
+}
+.gantt-track-cat { min-height: 0; }
+.is-daily .gantt-track {
+  background-image:
+    linear-gradient(to right, #efece6 1px, transparent 1px),
+    linear-gradient(to right,
+      rgba(210, 60, 60, 0.05) 0, rgba(210, 60, 60, 0.05) var(--day-w),
+      transparent var(--day-w), transparent calc(var(--day-w) * 6),
+      rgba(52, 102, 194, 0.05) calc(var(--day-w) * 6), rgba(52, 102, 194, 0.05) calc(var(--day-w) * 7));
+  background-size: var(--day-w) 100%, calc(var(--day-w) * 7) 100%;
+  background-position: 0 0, var(--week-offset) 0;
 }
 .gantt-bar {
   position: absolute; top: 10px; height: 20px;
   border-radius: 6px; overflow: hidden;
   background: color-mix(in srgb, var(--c) 22%, white);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, white);
+  cursor: grab; touch-action: pan-y; user-select: none;
+  z-index: 1;
 }
+.gantt-bar:hover { box-shadow: inset 0 0 0 1px var(--c), 0 1px 4px rgba(0, 0, 0, 0.12); }
+.gantt-bar.is-moving { cursor: grabbing; box-shadow: 0 0 0 2px var(--c), 0 4px 12px rgba(0, 0, 0, 0.2); z-index: 2; }
 .gantt-bar.cut-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .gantt-bar.cut-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.gantt-fill { display: block; height: 100%; background: var(--c); }
+.gantt-fill { display: block; height: 100%; background: var(--c); pointer-events: none; }
 .gantt-check {
   position: absolute; inset: 0; display: grid; place-items: center;
-  color: #fff; font-size: 13px; font-weight: 700;
+  color: #fff; font-size: 13px; font-weight: 700; pointer-events: none;
 }
-.today-line { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--sun); opacity: 0.7; pointer-events: none; }
+.grip { position: absolute; top: 0; bottom: 0; width: 9px; cursor: ew-resize; z-index: 1; }
+.grip-l { left: 0; }
+.grip-r { right: 0; }
+.grip::after {
+  content: ""; position: absolute; top: 5px; bottom: 5px; width: 2px; border-radius: 1px;
+  background: rgba(255, 255, 255, 0.9); opacity: 0; transition: opacity 0.15s;
+}
+.grip-l::after { left: 3px; }
+.grip-r::after { right: 3px; }
+.gantt-bar:hover .grip::after, .gantt-bar.is-moving .grip::after { opacity: 1; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15); }
+.today-line { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--sun); opacity: 0.7; pointer-events: none; z-index: 0; }
+.is-daily .today-line { margin-left: calc(var(--day-w) / 2 - 1px); }
 
+body.gantt-dragging { user-select: none; -webkit-user-select: none; }
+body.gantt-dragging .gantt-bar:not(.is-moving) { pointer-events: none; }
+
+.gantt-tip {
+  position: fixed; z-index: 50; pointer-events: none;
+  background: var(--text); color: #fff; font-size: 13px; font-weight: 600;
+  padding: 5px 10px; border-radius: 8px; white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.gantt-help { color: var(--muted); font-size: 13px; margin: 8px 2px 0; }
 /* 목표 입력 창 */
 .cat-pick { display: flex; flex-wrap: wrap; gap: 6px; }
 .cat-pick label {
@@ -419,15 +544,22 @@ code { background: #f0ede7; padding: 1px 5px; border-radius: 4px; font-size: 13p
   .summary-card.total .summary-label { grid-column: 1 / -1; }
   .summary-card.total .summary-value { margin: 0; font-size: 30px; }
   .summary-card.total .summary-sub { grid-column: 1 / -1; }
-  .gantt-head, .gantt-row { grid-template-columns: 112px 1fr; }
-  .gantt-label { padding: 6px 6px 6px 10px; flex-direction: column; align-items: flex-start; gap: 0; }
+  .goals-tools { width: 100%; }
+  .search-box { flex: 1; }
+  .search-box input { width: 100%; }
+  .gantt-inner { --label-w: 124px; }
+  .gantt-label-col { padding: 8px 10px; }
+  .gantt-cat-label { padding: 10px 6px 6px 8px; gap: 4px; }
+  .gantt-cat-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+  .gantt-cat-rate { display: none; } /* 휴대폰에서는 위 요약 카드에서 확인 */
+  .gantt-handle { width: 18px; font-size: 14px; }
+  .gantt-open { flex-direction: column; align-items: flex-start; gap: 0; padding: 5px 0; }
   .gantt-title { width: 100%; font-size: 13px; }
   .gantt-rate { font-size: 12px; }
-  .gantt-label-col { padding: 8px 10px; }
-  .gantt-months span { font-size: 11px; }
-  .gantt-months span::after { content: none; }
-  .gantt-cat { padding: 10px 10px 6px; }
-  .gantt-empty { padding: 4px 10px 12px; }
+  .gantt-months:not(.daily) span { font-size: 11px; }
+  .gantt-months:not(.daily) span::after { content: none; }
+  .gantt-empty { font-size: 13px; padding: 6px 8px 12px 10px; }
+  .gantt-help { font-size: 12px; }
   .row { grid-template-columns: 1fr; gap: 0; }
   .sheet { padding: 16px; }
   .form-actions { bottom: -16px; margin: 0 -16px -16px; padding: 12px 16px 16px; }

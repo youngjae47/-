@@ -545,7 +545,7 @@
   renderMemberPick();
   renderWeekdayPick();
   renderGrid();
-  GoalsPage.init({ toast });
+  GoalsPage.init({ toast, onShowMember: showTab });
   let savedTab = "calendar";
   try { savedTab = localStorage.getItem(TAB_KEY) || "calendar"; } catch { /* 기본은 가족 일정 */ }
   showTab(document.querySelector(`.tab[data-tab="${savedTab}"]`) ? savedTab : "calendar");

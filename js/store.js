@@ -46,7 +46,7 @@ const Store = (function () {
 
   function cleanGoal(g) {
     const progress = Math.round(Number(g.progress) || 0);
-    return {
+    const cleaned = {
       title: String(g.title || "").slice(0, 40),
       member: g.member,
       category: g.category,
@@ -55,6 +55,9 @@ const Store = (function () {
       progress: Math.min(100, Math.max(0, progress)),
       memo: String(g.memo || "").slice(0, 200),
     };
+    // 간트차트에서 끌어서 정한 순서 (없으면 시작 날짜 순)
+    if (Number.isInteger(g.order) && g.order >= 0) cleaned.order = g.order;
+    return cleaned;
   }
 
   // 일정과 목표를 같은 방식으로 다룬다
