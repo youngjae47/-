@@ -18,7 +18,8 @@ service cloud.firestore {
     }
 
     function validEvent(d) {
-      return d.keys().hasOnly(['title', 'member', 'start', 'end', 'time', 'memo', 'updatedAt'])
+      return d.keys().hasOnly(['title', 'member', 'start', 'end', 'time', 'memo', 'updatedAt',
+                               'repeat', 'repeatDays', 'repeatUntil', 'exdates'])
         && d.keys().hasAll(['title', 'member', 'start', 'end', 'time', 'memo', 'updatedAt'])
         && d.title is string && d.title.size() > 0 && d.title.size() <= 40
         && d.member in ['family', 'dad', 'mom', 'suhyun']
@@ -26,7 +27,21 @@ service cloud.firestore {
         && d.end is string && (d.end == '' || (isDate(d.end) && d.end >= d.start))
         && d.time is string && (d.time == '' || d.time.matches('^[0-9]{2}:[0-9]{2}$'))
         && d.memo is string && d.memo.size() <= 200
-        && d.updatedAt == request.time;
+        && d.updatedAt == request.time
+        && validRepeat(d);
+    }
+
+    // 반복 일정 (예전에 저장된 일정처럼 반복 필드가 없어도 된다)
+    function validRepeat(d) {
+      let repeat = d.get('repeat', '');
+      let days = d.get('repeatDays', []);
+      let until = d.get('repeatUntil', '');
+      let exdates = d.get('exdates', []);
+      return repeat in ['', 'daily', 'weekly', 'monthly', 'yearly']
+        && days is list && days.size() <= 7 && days.toSet().hasOnly([0, 1, 2, 3, 4, 5, 6])
+        && until is string && (until == '' || (isDate(until) && until >= d.start))
+        && exdates is list && exdates.size() <= 366
+        && (repeat == '' || d.end == '');
     }
 
     match /families/{code}/events/{eventId} {
