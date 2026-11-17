@@ -35,9 +35,9 @@
   }
 
   /** 그날 보여줄 일정 (여러 날 일정, 반복 일정 포함, 시간 순) */
-  function eventsOn(key) {
+  function eventsOn(key, everyone = false) {
     return state.events
-      .filter((e) => state.visible.has(e.member))
+      .filter((e) => everyone || state.visible.has(e.member))
       .filter((e) => occursOn(e, key))
       .map((e) => (e.repeat ? { ...e, occurrence: key } : e))
       .sort((a, b) => (a.time || "").localeCompare(b.time || "") || a.title.localeCompare(b.title));
@@ -66,7 +66,132 @@
   }
 
   // ---------- 달력 ----------
+  // ---------- 이번 주 요약 ----------
+  function addDaysKey(key, n) {
+    const d = parseKey(key);
+    d.setDate(d.getDate() + n);
+    return keyOf(d);
+  }
+  function shortLabel(key) {
+    const d = parseKey(key);
+    return `${d.getMonth() + 1}월 ${d.getDate()}일(${WEEKDAY[d.getDay()]})`;
+  }
+
+  function renderWeek() {
+    const box = $("#weekSummary");
+    const monday = addDaysKey(todayKey, -((today.getDay() + 6) % 7)); // 이번 주 월요일
+    const week = Array.from({ length: 7 }, (_, i) => addDaysKey(monday, i));
+
+    // 이번 주 일정 수: 여러 날 일정은 한 번, 반복 일정은 날마다 센다
+    const seen = new Set();
+    const counts = Object.fromEntries(MEMBERS.map((m) => [m.id, 0]));
+    week.forEach((key) =>
+      eventsOn(key, true).forEach((e) => {
+        const id = e.repeat ? `${e.id}@${key}` : e.id;
+        if (seen.has(id)) return;
+        seen.add(id);
+        counts[e.member] = (counts[e.member] || 0) + 1;
+      })
+    );
+
+    // 다가오는 7일 (오늘부터). 여러 날 일정은 처음 보이는 날에 한 번만
+    const upcoming = [];
+    const listed = new Set();
+    for (let i = 0; i < 7; i++) {
+      const key = addDaysKey(todayKey, i);
+      const holiday = getHoliday(key);
+      if (holiday) upcoming.push({ key, i, holiday });
+      eventsOn(key, true).forEach((e) => {
+        const id = e.repeat ? `${e.id}@${key}` : e.id;
+        if (listed.has(id)) return;
+        listed.add(id);
+        upcoming.push({ key, i, e });
+      });
+    }
+
+    const stats = document.createElement("div");
+    stats.className = "week-stats";
+    const range = document.createElement("p");
+    range.className = "week-range";
+    range.textContent = `이번 주 · ${shortLabel(week[0])} ~ ${shortLabel(week[6])}`;
+    const total = document.createElement("p");
+    total.className = "week-total";
+    const n = document.createElement("b");
+    n.textContent = seen.size;
+    total.append("가족 일정 ", n, "개");
+    const chips = document.createElement("div");
+    chips.className = "week-members";
+    MEMBERS.forEach((m) => {
+      const c = document.createElement("span");
+      c.className = "week-chip";
+      c.style.setProperty("--c", colorOf(m.id));
+      c.innerHTML = '<span class="dot"></span>';
+      c.append(`${m.name} ${counts[m.id]}`);
+      chips.append(c);
+    });
+    stats.append(range, total, chips);
+
+    const up = document.createElement("div");
+    up.className = "week-upcoming";
+    const label = document.createElement("p");
+    label.className = "week-label";
+    label.textContent = "다가오는 7일";
+    up.append(label);
+    if (!upcoming.length) {
+      const empty = document.createElement("p");
+      empty.className = "week-empty";
+      empty.textContent = "다가오는 일정이 없어요. 🙌";
+      up.append(empty);
+    } else {
+      const LIMIT = 5;
+      const ul = document.createElement("ul");
+      upcoming.slice(0, LIMIT).forEach((item) => {
+        const li = document.createElement("li");
+        const b = document.createElement("button");
+        b.type = "button";
+        const dday = document.createElement("span");
+        dday.className = "dday" + (item.i === 0 ? " is-today" : "");
+        dday.textContent = item.i === 0 ? "오늘" : item.i === 1 ? "내일" : `D-${item.i}`;
+        const when = document.createElement("span");
+        when.className = "week-when";
+        when.textContent = shortLabel(item.key);
+        const what = document.createElement("span");
+        what.className = "week-what";
+        if (item.holiday) {
+          what.classList.add("is-holiday");
+          what.textContent = `🎌 ${item.holiday}`;
+        } else {
+          b.style.setProperty("--c", colorOf(item.e.member));
+          const dot = document.createElement("span");
+          dot.className = "dot";
+          what.append(dot);
+          if (item.e.time) {
+            const t = document.createElement("span");
+            t.className = "time";
+            t.textContent = item.e.time;
+            what.append(t);
+          }
+          what.append(item.e.title);
+        }
+        b.append(dday, what, when);
+        b.setAttribute("aria-label", `${dday.textContent}, ${shortLabel(item.key)}, ${item.holiday || item.e.title}`);
+        b.addEventListener("click", () => openDay(item.key));
+        li.append(b);
+        ul.append(li);
+      });
+      up.append(ul);
+      if (upcoming.length > LIMIT) {
+        const more = document.createElement("p");
+        more.className = "week-more";
+        more.textContent = `+${upcoming.length - LIMIT}개 더 있어요`;
+        up.append(more);
+      }
+    }
+    box.replaceChildren(stats, up);
+  }
+
   function renderGrid() {
+    renderWeek();
     const { year, month } = state;
     $("#monthTitle").textContent = `${year}년 ${month + 1}월`;
 
@@ -507,6 +632,65 @@
     if (e.key === "ArrowRight") onGoals ? $("#nextYear").click() : moveMonth(1);
   });
 
+  // ---------- 홈 화면에 추가 (PWA) ----------
+  function setupInstall() {
+    // 인터넷 없이도 열리도록 화면 파일 보관 (file:// 로 열었을 때는 쓸 수 없음)
+    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+
+    const DISMISS_KEY = "familySchedule.installDismissed";
+    const banner = $("#installBanner");
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    let dismissed = false;
+    try {
+      dismissed = localStorage.getItem(DISMISS_KEY) === "1";
+    } catch { /* 저장 못 하면 매번 보여도 괜찮음 */ }
+    if (standalone || dismissed) return;
+
+    const close = () => {
+      banner.hidden = true;
+      try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* 무시 */ }
+    };
+    $("#installClose").addEventListener("click", close);
+
+    // 안드로이드 · PC 크롬: 설치 버튼
+    let deferred = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferred = e;
+      $("#installText").textContent = "홈 화면에 추가하면 앱처럼 바로 열 수 있어요.";
+      $("#installBtn").hidden = false;
+      banner.hidden = false;
+    });
+    $("#installBtn").addEventListener("click", async () => {
+      if (!deferred) return;
+      deferred.prompt();
+      const { outcome } = await deferred.userChoice;
+      deferred = null;
+      if (outcome === "accepted") {
+        banner.hidden = true;
+        toast("홈 화면에 추가했어요.");
+      }
+    });
+    window.addEventListener("appinstalled", () => (banner.hidden = true));
+
+    // 아이폰 · 아이패드 사파리: 설치 버튼이 없어서 방법을 알려준다
+    const ua = navigator.userAgent;
+    const iOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const safari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|KAKAOTALK|NAVER/.test(ua);
+    if (iOS && safari) {
+      $("#installText").innerHTML = "";
+      $("#installText").append("아래 ", Object.assign(document.createElement("b"), { textContent: "공유 버튼(⬆︎)" }),
+        " → ", Object.assign(document.createElement("b"), { textContent: "홈 화면에 추가" }), "를 누르면 앱처럼 쓸 수 있어요.");
+      banner.hidden = false;
+    } else if (iOS) {
+      $("#installText").textContent = "사파리에서 열면 홈 화면에 추가할 수 있어요.";
+      banner.hidden = false;
+    }
+  }
+
   // ---------- 탭: 가족 일정 / 아빠 / 엄마 / 수현 ----------
   const TAB_KEY = "familySchedule.tab";
   function showTab(tab) {
@@ -546,6 +730,7 @@
   renderWeekdayPick();
   renderGrid();
   GoalsPage.init({ toast, onShowMember: showTab });
+  setupInstall();
   let savedTab = "calendar";
   try { savedTab = localStorage.getItem(TAB_KEY) || "calendar"; } catch { /* 기본은 가족 일정 */ }
   showTab(document.querySelector(`.tab[data-tab="${savedTab}"]`) ? savedTab : "calendar");
