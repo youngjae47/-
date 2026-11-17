@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>우리 가족 스케쥴</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>우리 가족 스케쥴</h1>
+    <nav class="tabs" aria-label="화면 이동">
+      <button class="tab is-active" aria-current="page">가족 일정</button>
+      <button class="tab" disabled title="다음 단계에서 만들어요">아빠</button>
+      <button class="tab" disabled title="다음 단계에서 만들어요">엄마</button>
+      <button class="tab" disabled title="다음 단계에서 만들어요">수현</button>
+    </nav>
+  </header>
+
+  <main class="calendar-page">
+    <div class="toolbar">
+      <div class="month-nav">
+        <button id="prevMonth" class="icon-btn" aria-label="이전 달">‹</button>
+        <h2 id="monthTitle"></h2>
+        <button id="nextMonth" class="icon-btn" aria-label="다음 달">›</button>
+        <button id="todayBtn" class="text-btn">오늘</button>
+      </div>
+      <div class="filters" role="group" aria-label="누구 일정 보기">
+        <!-- app.js가 구성원 버튼을 채운다 -->
+      </div>
+    </div>
+
+    <div class="weekdays" aria-hidden="true">
+      <span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span>
+    </div>
+    <div id="grid" class="grid" role="grid" aria-label="달력"></div>
+    <p id="holidayNote" class="note" hidden></p>
+  </main>
+
+  <button id="addBtn" class="fab" aria-label="일정 추가">＋</button>
+
+  <!-- 날짜를 눌렀을 때: 그날 일정 목록 -->
+  <dialog id="dayDialog" class="sheet">
+    <div class="sheet-head">
+      <div>
+        <h3 id="dayTitle"></h3>
+        <p id="dayHoliday" class="holiday-name"></p>
+      </div>
+      <button class="icon-btn" data-close aria-label="닫기">✕</button>
+    </div>
+    <ul id="dayList" class="day-list"></ul>
+    <p id="dayEmpty" class="empty">이날은 아직 일정이 없어요.</p>
+    <button id="dayAddBtn" class="primary-btn">＋ 이날 일정 추가</button>
+  </dialog>
+
+  <!-- 일정 입력 · 수정 -->
+  <dialog id="eventDialog" class="sheet">
+    <form id="eventForm" method="dialog">
+      <div class="sheet-head">
+        <h3 id="formTitle">일정 추가</h3>
+        <button type="button" class="icon-btn" data-close aria-label="닫기">✕</button>
+      </div>
+
+      <label class="field">
+        <span>무슨 일정인가요?</span>
+        <input name="title" required maxlength="40" placeholder="예: 수현 피아노 학원" autocomplete="off" />
+      </label>
+
+      <fieldset class="field">
+        <legend>누구 일정인가요?</legend>
+        <div class="member-pick" id="memberPick"></div>
+      </fieldset>
+
+      <div class="row">
+        <label class="field">
+          <span>시작 날짜</span>
+          <input type="date" name="start" required />
+        </label>
+        <label class="field">
+          <span>끝 날짜 <small>(하루면 비워두기)</small></span>
+          <input type="date" name="end" />
+        </label>
+      </div>
+
+      <label class="field">
+        <span>시간 <small>(선택)</small></span>
+        <input type="time" name="time" />
+      </label>
+
+      <label class="field">
+        <span>메모 <small>(선택)</small></span>
+        <textarea name="memo" rows="2" maxlength="200" placeholder="준비물, 장소 등"></textarea>
+      </label>
+
+      <p id="formError" class="form-error" role="alert"></p>
+
+      <div class="form-actions">
+        <button type="button" id="deleteBtn" class="danger-btn" hidden>삭제</button>
+        <span class="spacer"></span>
+        <button type="button" class="text-btn" data-close>취소</button>
+        <button type="submit" class="primary-btn">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/holidays.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
