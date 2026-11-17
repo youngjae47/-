@@ -131,6 +131,7 @@ const GoalsPage = (function () {
       b.setAttribute("aria-pressed", String(b.dataset.zoom === state.zoom))
     );
     const goals = memberGoals();
+    renderFamily();
     renderSummary(goals);
     renderResults();
     renderGantt(goals.filter(matches));
@@ -157,6 +158,56 @@ const GoalsPage = (function () {
         return card;
       })
     );
+  }
+
+  /** 가족 전체 달성률: 가족 평균 + 아빠 · 엄마 · 수현 (누르면 그 사람 탭) */
+  function renderFamily() {
+    const people = MEMBERS.filter((m) => m.id !== "family");
+    const inYear = (g) => g.start <= yearLast() && g.end >= yearFirst();
+    const yearGoals = state.goals.filter((g) => inYear(g) && people.some((m) => m.id === g.member));
+    const familyRate = average(yearGoals);
+
+    const head = el("div", "family-card family-avg");
+    head.append(
+      el("p", "family-name", `👨‍👩‍👧 가족 평균`),
+      el("p", "family-rate", rateText(familyRate)),
+      meter(familyRate, "var(--accent)"),
+      el("p", "family-sub", `목표 ${yearGoals.length}개`)
+    );
+
+    const cards = people.map((m) => {
+      const list = yearGoals.filter((g) => g.member === m.id);
+      const rate = average(list);
+      const done = list.filter((g) => g.progress >= 100).length;
+      const card = el("button", "family-card");
+      card.type = "button";
+      card.style.setProperty("--mc", `var(--c-${m.id})`);
+      if (m.id === state.member) {
+        card.classList.add("is-current");
+        card.setAttribute("aria-current", "true");
+      }
+      card.setAttribute("aria-label", `${m.name} 달성률 ${rateText(rate)}, 완료 ${done}개. ${m.name} 탭으로 가기`);
+      card.append(
+        el("p", "family-name", m.name),
+        el("p", "family-rate", rateText(rate)),
+        meter(rate, `var(--c-${m.id})`),
+        el("p", "family-sub", done ? `${"🏅".repeat(Math.min(done, 5))}${done > 5 ? ` ×${done}` : ""} 완료 ${done}개` : `목표 ${list.length}개`)
+      );
+      card.addEventListener("click", () => {
+        if (m.id !== state.member) onShowMember(m.id);
+      });
+      return card;
+    });
+    $("#familyStrip").replaceChildren(head, ...cards);
+  }
+
+  function meter(rate, color) {
+    const box = el("div", "meter");
+    const fill = el("span");
+    fill.style.width = `${rate || 0}%`;
+    fill.style.background = color;
+    box.append(fill);
+    return box;
   }
 
   /** 검색 결과: 가족 전체 목표 */
@@ -353,6 +404,11 @@ const GoalsPage = (function () {
     open.setAttribute("aria-label", `${g.title}, ${fullDate(g.start)}부터 ${fullDate(g.end)}까지, 달성률 ${g.progress}%`);
     const title = el("span", "gantt-title");
     title.append(highlighted(g.title));
+    if (g.progress >= 100) {
+      const badge = el("span", "badge", "🏅");
+      badge.title = "달성한 목표";
+      open.append(badge);
+    }
     open.append(title, el("span", "gantt-rate", `${g.progress}%`));
     open.addEventListener("click", () => openForm(g));
     label.append(handle, open);
@@ -673,8 +729,12 @@ const GoalsPage = (function () {
     }
     if (goal.order === undefined) delete goal.order;
 
+    // 100%가 되었으면 축하 (내가 바꾼 것). 저장 전에 표시해 둬야 '가족이 달성' 축하와 겹치지 않는다.
+    const justDone = existing && existing.progress < 100 && goal.progress >= 100;
+    if (justDone) celebrated.add(existing.id);
     Store.saveGoal(goal);
     $("#goalDialog").close();
+    if (justDone) celebrate(goal, true);
     // 다른 해 목표를 저장했으면 그 해로 이동
     if (goal.end < yearFirst() || goal.start > yearLast()) {
       state.year = Number(goal.start.slice(0, 4));
@@ -749,7 +809,40 @@ const GoalsPage = (function () {
     });
   }
 
+  // ---------- 목표 달성 축하 ----------
+  const celebrated = new Set(); // 이 화면에서 이미 축하한 목표 (같은 목표를 두 번 축하하지 않게)
+  let seenGoals = null; // 지난번에 받은 목표의 달성률 { id: progress }
+
+  function celebrate(goal, byMe) {
+    const year = today.getFullYear();
+    const count = state.goals.filter(
+      (g) =>
+        g.member === goal.member &&
+        (g.id === goal.id ? goal.progress : g.progress) >= 100 &&
+        g.end >= `${year}-01-01` &&
+        g.start <= `${year}-12-31`
+    ).length || 1;
+    Celebrate.show({ who: memberName(goal.member), title: goal.title, count, byMe });
+  }
+
+  /** 다른 기기(가족)에서 100%가 된 목표를 찾아 축하한다. 처음 불러올 때는 축하하지 않는다. */
+  function checkRemoteAchievements(list) {
+    if (seenGoals) {
+      const done = list.find(
+        (g) => g.progress >= 100 && seenGoals[g.id] !== undefined && seenGoals[g.id] < 100 && !celebrated.has(g.id)
+      );
+      if (done) {
+        celebrated.add(done.id);
+        celebrate(done, false);
+      }
+    }
+    seenGoals = Object.fromEntries(list.map((g) => [g.id, g.progress]));
+    // 100% 아래로 내려간 목표는 다시 달성하면 또 축하할 수 있게
+    list.forEach((g) => g.progress < 100 && celebrated.delete(g.id));
+  }
+
   function setGoals(list) {
+    checkRemoteAchievements(list);
     state.goals = list;
     if ($("#goalsPage").hidden) return;
     // 끄는 중에는 다시 그리지 않는다 (끝나면 저장 결과로 다시 그려짐)

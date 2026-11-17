@@ -4,6 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>우리 가족 스케쥴</title>
+  <meta name="description" content="가족 모두가 함께 보고 고치는 일정 달력과 목표 보드" />
+  <meta name="theme-color" content="#2f6b5a" />
+  <!-- 홈 화면에 추가 (PWA) -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="가족 스케쥴" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -21,6 +31,14 @@
       <button class="tab" data-tab="suhyun">수현</button>
     </nav>
   </header>
+
+  <!-- 홈 화면에 추가 안내 -->
+  <div id="installBanner" class="install-banner" hidden>
+    <img src="icons/icon-192.png" alt="" width="36" height="36" />
+    <p id="installText">홈 화면에 추가하면 앱처럼 바로 열 수 있어요.</p>
+    <button id="installBtn" class="primary-btn" hidden>설치</button>
+    <button id="installClose" class="icon-btn" aria-label="안내 닫기">✕</button>
+  </div>
 
   <!-- 구성원 목표 보드 (아빠 · 엄마 · 수현 탭) -->
   <main id="goalsPage" class="goals-page" hidden>
@@ -45,6 +63,8 @@
 
     <section id="searchResults" class="search-results" aria-live="polite" hidden></section>
 
+    <section id="familyStrip" class="family-strip" aria-label="가족 전체 달성률"></section>
+
     <section class="summary" aria-label="목표 달성률 요약">
       <div class="summary-card total">
         <p class="summary-label">전체 달성률</p>
@@ -65,6 +85,8 @@
   <div id="ganttTip" class="gantt-tip" hidden></div>
 
   <main class="calendar-page">
+    <section id="weekSummary" class="week-summary" aria-label="이번 주 요약"></section>
+
     <div class="toolbar">
       <div class="month-nav">
         <button id="prevMonth" class="icon-btn" aria-label="이전 달">‹</button>
@@ -307,12 +329,22 @@
     </section>
   </dialog>
 
+  <!-- 목표 달성 축하 -->
+  <dialog id="celebrateDialog" class="sheet celebrate">
+    <p class="celebrate-trophy" aria-hidden="true">🏆</p>
+    <h3 id="celebrateTitle">축하해요!</h3>
+    <p id="celebrateText"></p>
+    <p id="celebrateBadge" class="celebrate-badge"></p>
+    <button class="primary-btn wide" data-close>고마워요!</button>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="js/holidays.js"></script>
   <script src="js/recurrence.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/celebrate.js"></script>
   <script src="js/goals.js"></script>
   <script src="js/app.js"></script>
 </body>

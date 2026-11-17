@@ -192,6 +192,77 @@ code { background: #f0ede7; padding: 1px 5px; border-radius: 4px; font-size: 13p
 
 .note { color: var(--muted); font-size: 13px; margin-top: 10px; }
 
+/* ---------- 홈 화면에 추가 안내 ---------- */
+.install-banner {
+  display: flex; align-items: center; gap: 10px;
+  max-width: 1100px; margin: 10px auto 0; padding: 8px 10px 8px 12px;
+  background: #eef5f2; border: 1px solid #cfe3da; border-radius: var(--radius);
+  width: calc(100% - 32px);
+}
+.install-banner img { border-radius: 8px; flex: none; }
+.install-banner p { margin: 0; flex: 1; font-size: 14px; }
+.install-banner .primary-btn { padding: 7px 16px; flex: none; }
+.install-banner .icon-btn { flex: none; width: 30px; height: 30px; font-size: 14px; }
+
+/* ---------- 이번 주 요약 ---------- */
+.week-summary {
+  display: grid; grid-template-columns: minmax(220px, 1fr) 2fr; gap: 10px;
+  margin-bottom: 14px;
+}
+.week-stats, .week-upcoming {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 14px; min-width: 0;
+}
+.week-range { margin: 0; font-size: 13px; color: var(--muted); font-weight: 600; }
+.week-total { margin: 2px 0 8px; font-size: 16px; }
+.week-total b { font-size: 28px; color: var(--accent); margin-right: 1px; font-variant-numeric: tabular-nums; }
+.week-members { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.week-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); }
+.week-chip .dot, .week-what .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.week-label { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.week-upcoming ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.week-upcoming button {
+  width: 100%; border: 0; background: none; border-radius: 8px; padding: 4px 6px; margin: 0 -6px;
+  display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 8px; text-align: left;
+}
+.week-upcoming button:hover { background: #f6f4ef; }
+.dday {
+  font-size: 12px; font-weight: 700; text-align: center; border-radius: 999px; padding: 2px 0;
+  background: #f0ede7; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.dday.is-today { background: var(--accent); color: #fff; }
+.week-what { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+.week-what .time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.week-what.is-holiday { color: var(--sun); }
+.week-when { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.week-empty, .week-more { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+
+/* ---------- 가족 전체 달성률 ---------- */
+.family-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.family-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px; text-align: left; min-width: 0;
+}
+button.family-card:hover { border-color: var(--mc); }
+.family-card.is-current { border-color: var(--mc); box-shadow: inset 0 0 0 1px var(--mc); background: color-mix(in srgb, var(--mc) 6%, white); }
+.family-avg { background: #f3f7f5; }
+.family-name { margin: 0; font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.family-card.is-current .family-name { color: var(--mc); }
+.family-rate { margin: 0 0 4px; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.family-sub { margin: 4px 0 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.family-card .meter { height: 6px; }
+
+/* ---------- 목표 달성 축하 ---------- */
+.badge { font-size: 14px; flex: none; }
+.celebrate { text-align: center; width: min(360px, calc(100vw - 32px)); padding: 24px 22px 20px; }
+.celebrate-trophy { font-size: 64px; line-height: 1; margin: 4px 0 8px; animation: pop 0.6s cubic-bezier(.2, 1.6, .4, 1) both; }
+.celebrate h3 { margin: 0 0 6px; font-size: 22px; }
+.celebrate p { margin: 0 0 8px; }
+.celebrate-badge { color: var(--muted); font-size: 14px; margin-bottom: 16px !important; }
+@keyframes pop { from { transform: scale(0.3) rotate(-15deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .celebrate-trophy { animation: none; } }
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1000; }
+
 /* ---------- 목표 보드 ---------- */
 .goals-page { max-width: 1100px; margin: 0 auto; padding: 14px 16px 96px; --c: var(--accent); }
 .goals-page .month-nav h2 { min-width: 0; }
@@ -544,6 +615,20 @@ body.gantt-dragging .gantt-bar:not(.is-moving) { pointer-events: none; }
   .summary-card.total .summary-label { grid-column: 1 / -1; }
   .summary-card.total .summary-value { margin: 0; font-size: 30px; }
   .summary-card.total .summary-sub { grid-column: 1 / -1; }
+  .install-banner { width: calc(100% - 16px); margin-top: 8px; }
+  .install-banner p { font-size: 13px; }
+  .week-summary { grid-template-columns: 1fr; gap: 8px; margin-bottom: 10px; }
+  .week-stats { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 8px; }
+  .week-range { grid-column: 1 / -1; }
+  .week-total { margin: 2px 0 0; }
+  .week-members { justify-content: flex-end; max-width: 170px; }
+  .week-upcoming button { grid-template-columns: 40px 1fr auto; }
+  .family-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .family-card { padding: 8px; }
+  .family-name { font-size: 12px; }
+  .family-rate { font-size: 18px; }
+  .family-sub { font-size: 11px; }
+  .gantt-open .badge { display: none; } /* 좁은 칸에서는 막대의 ✓와 색깔 있는 100%로 충분 */
   .goals-tools { width: 100%; }
   .search-box { flex: 1; }
   .search-box input { width: 100%; }
