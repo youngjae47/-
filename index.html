@@ -15,12 +15,42 @@
       </button>
     </div>
     <nav class="tabs" aria-label="화면 이동">
-      <button class="tab is-active" aria-current="page">가족 일정</button>
-      <button class="tab" disabled title="다음 단계에서 만들어요">아빠</button>
-      <button class="tab" disabled title="다음 단계에서 만들어요">엄마</button>
-      <button class="tab" disabled title="다음 단계에서 만들어요">수현</button>
+      <button class="tab is-active" data-tab="calendar" aria-current="page">가족 일정</button>
+      <button class="tab" data-tab="dad">아빠</button>
+      <button class="tab" data-tab="mom">엄마</button>
+      <button class="tab" data-tab="suhyun">수현</button>
     </nav>
   </header>
+
+  <!-- 구성원 목표 보드 (아빠 · 엄마 · 수현 탭) -->
+  <main id="goalsPage" class="goals-page" hidden>
+    <div class="toolbar">
+      <div class="month-nav">
+        <button id="prevYear" class="icon-btn" aria-label="이전 해">‹</button>
+        <h2 id="goalsTitle"></h2>
+        <button id="nextYear" class="icon-btn" aria-label="다음 해">›</button>
+        <button id="thisYearBtn" class="text-btn">올해</button>
+      </div>
+    </div>
+
+    <section class="summary" aria-label="목표 달성률 요약">
+      <div class="summary-card total">
+        <p class="summary-label">전체 달성률</p>
+        <p class="summary-value" id="totalRate">0%</p>
+        <div class="meter"><span id="totalMeter"></span></div>
+        <p class="summary-sub" id="totalSub"></p>
+      </div>
+      <div class="summary-cats" id="summaryCats"></div>
+    </section>
+
+    <section class="gantt" aria-label="목표 간트차트">
+      <div class="gantt-head">
+        <div class="gantt-label-col">목표</div>
+        <div class="gantt-months" id="ganttMonths"></div>
+      </div>
+      <div id="ganttBody"></div>
+    </section>
+  </main>
 
   <main class="calendar-page">
     <div class="toolbar">
@@ -130,6 +160,63 @@
     </form>
   </dialog>
 
+  <!-- 목표 입력 · 수정 -->
+  <dialog id="goalDialog" class="sheet">
+    <form id="goalForm" method="dialog">
+      <div class="sheet-head">
+        <h3 id="goalFormTitle">목표 추가</h3>
+        <button type="button" class="icon-btn" data-close aria-label="닫기">✕</button>
+      </div>
+
+      <fieldset class="field">
+        <legend>대분류</legend>
+        <div class="cat-pick" id="catPick"></div>
+      </fieldset>
+
+      <label class="field">
+        <span>목표 (소분류)</span>
+        <input name="title" required maxlength="40" placeholder="예: 매일 30분 걷기" autocomplete="off" />
+      </label>
+
+      <div class="row">
+        <label class="field">
+          <span>시작 날짜</span>
+          <input type="date" name="start" required />
+        </label>
+        <label class="field">
+          <span>끝 날짜</span>
+          <input type="date" name="end" required />
+        </label>
+      </div>
+
+      <div class="field">
+        <span class="field-title">달성률 <output id="progressOut" class="progress-out">0%</output></span>
+        <input type="range" name="progress" min="0" max="100" step="5" value="0" aria-label="달성률" />
+        <div class="progress-quick">
+          <button type="button" data-step="-10">−10</button>
+          <button type="button" data-set="0">0%</button>
+          <button type="button" data-set="50">50%</button>
+          <button type="button" data-set="100">100%</button>
+          <button type="button" data-step="10">+10</button>
+        </div>
+      </div>
+
+      <label class="field">
+        <span>메모 <small>(선택)</small></span>
+        <textarea name="memo" rows="2" maxlength="200" placeholder="어떻게 할지, 기준 등"></textarea>
+      </label>
+
+      <p id="goalError" class="form-error" role="alert"></p>
+
+      <div class="form-actions">
+        <button type="button" id="goalDeleteBtn" class="danger-btn" hidden>삭제</button>
+        <span class="spacer"></span>
+        <button type="button" class="text-btn" data-close>취소</button>
+        <button type="submit" class="primary-btn">저장</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- 반복 일정을 눌렀을 때: 이 날만 / 모든 반복 -->
   <dialog id="scopeDialog" class="sheet small-sheet">
     <div class="sheet-head">
@@ -190,7 +277,7 @@
       <button id="copyLinkBtn" class="primary-btn wide">링크 복사</button>
 
       <div id="moveLocalBox" class="move-local" hidden>
-        <p>이 기기에만 저장해 둔 일정이 <strong id="localCount"></strong>개 있어요.</p>
+        <p>이 기기에만 저장해 둔 일정 · 목표가 <strong id="localCount"></strong>개 있어요.</p>
         <button id="moveLocalBtn" class="text-btn wide">가족 달력으로 옮기기</button>
       </div>
 
@@ -214,6 +301,7 @@
   <script src="js/recurrence.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/goals.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -18,6 +18,7 @@
     editMode: "new", // new | edit | all(반복 전체) | one(반복 중 이 날만)
     occurrence: null, // 반복 일정에서 고른 날짜
     scopeEvent: null, // 이 날만 / 모든 반복 창에 열린 일정
+    tab: "calendar", // calendar | dad | mom | suhyun
   };
 
   // ---------- 날짜 도우미 ----------
@@ -472,7 +473,9 @@
     state.month = today.getMonth();
     renderGrid();
   });
-  $("#addBtn").addEventListener("click", () => openForm(null, { dateKey: todayKey }));
+  $("#addBtn").addEventListener("click", () =>
+    state.tab === "calendar" ? openForm(null, { dateKey: todayKey }) : GoalsPage.openNew()
+  );
   $("#dayAddBtn").addEventListener("click", () => openForm(null, { dateKey: state.openDay }));
   $("#eventForm").repeat.addEventListener("change", syncRepeatFields);
   $("#eventForm").start.addEventListener("change", syncRepeatFields);
@@ -495,12 +498,33 @@
   });
   $("#dayDialog").addEventListener("close", () => { state.openDay = null; });
 
-  // 왼쪽·오른쪽 화살표 키로 달 이동
+  // 왼쪽·오른쪽 화살표 키로 달 이동 (목표 탭에서는 해 이동)
   document.addEventListener("keydown", (e) => {
     if (document.querySelector("dialog[open]")) return;
-    if (e.key === "ArrowLeft") moveMonth(-1);
-    if (e.key === "ArrowRight") moveMonth(1);
+    if (e.target.closest("input, textarea, select")) return;
+    const onGoals = state.tab !== "calendar";
+    if (e.key === "ArrowLeft") onGoals ? $("#prevYear").click() : moveMonth(-1);
+    if (e.key === "ArrowRight") onGoals ? $("#nextYear").click() : moveMonth(1);
   });
+
+  // ---------- 탭: 가족 일정 / 아빠 / 엄마 / 수현 ----------
+  const TAB_KEY = "familySchedule.tab";
+  function showTab(tab) {
+    state.tab = tab;
+    document.querySelectorAll(".tab").forEach((t) => {
+      const on = t.dataset.tab === tab;
+      t.classList.toggle("is-active", on);
+      if (on) t.setAttribute("aria-current", "page");
+      else t.removeAttribute("aria-current");
+    });
+    const onGoals = tab !== "calendar";
+    $(".calendar-page").hidden = onGoals;
+    $("#goalsPage").hidden = !onGoals;
+    $("#addBtn").setAttribute("aria-label", onGoals ? "목표 추가" : "일정 추가");
+    if (onGoals) GoalsPage.show(tab);
+    try { localStorage.setItem(TAB_KEY, tab); } catch { /* 저장 못 해도 괜찮음 */ }
+  }
+  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showTab(t.dataset.tab)));
 
   $("#syncBtn").addEventListener("click", openShare);
   $("#createFamilyBtn").addEventListener("click", () => {
@@ -514,13 +538,17 @@
   $("#moveLocalBtn").addEventListener("click", () => {
     const n = Store.moveLocalToShared();
     renderShare();
-    toast(`일정 ${n}개를 가족 달력으로 옮겼어요.`);
+    toast(`${n}개를 가족 달력으로 옮겼어요.`);
   });
 
   renderFilters();
   renderMemberPick();
   renderWeekdayPick();
   renderGrid();
+  GoalsPage.init({ toast });
+  let savedTab = "calendar";
+  try { savedTab = localStorage.getItem(TAB_KEY) || "calendar"; } catch { /* 기본은 가족 일정 */ }
+  showTab(document.querySelector(`.tab[data-tab="${savedTab}"]`) ? savedTab : "calendar");
 
   let offeredMove = false;
   Store.start({
@@ -528,6 +556,9 @@
       state.events = list;
       renderGrid();
       if ($("#dayDialog").open) renderDayList();
+    },
+    onGoals(list) {
+      GoalsPage.setGoals(list);
     },
     onStatus(status, message) {
       renderStatus(status, message);

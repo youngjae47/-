@@ -48,5 +48,23 @@ service cloud.firestore {
       allow read, delete: if validCode(code);
       allow create, update: if validCode(code) && validEvent(request.resource.data);
     }
+
+    // 구성원별 목표 (간트차트)
+    function validGoal(d) {
+      return d.keys().hasOnly(['title', 'member', 'category', 'start', 'end', 'progress', 'memo', 'updatedAt'])
+        && d.keys().hasAll(['title', 'member', 'category', 'start', 'end', 'progress', 'memo', 'updatedAt'])
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 40
+        && d.member in ['dad', 'mom', 'suhyun']
+        && d.category in ['health', 'family', 'self']
+        && isDate(d.start) && isDate(d.end) && d.end >= d.start
+        && d.progress is int && d.progress >= 0 && d.progress <= 100
+        && d.memo is string && d.memo.size() <= 200
+        && d.updatedAt == request.time;
+    }
+
+    match /families/{code}/goals/{goalId} {
+      allow read, delete: if validCode(code);
+      allow create, update: if validCode(code) && validGoal(request.resource.data);
+    }
   }
 }
