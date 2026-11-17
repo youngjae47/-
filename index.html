@@ -8,7 +8,12 @@
 </head>
 <body>
   <header class="app-header">
-    <h1>우리 가족 스케쥴</h1>
+    <div class="title-row">
+      <h1>우리 가족 스케쥴</h1>
+      <button id="syncBtn" class="sync-badge" data-status="local">
+        <span class="sync-dot"></span><span id="syncText">이 기기에만 저장</span>
+      </button>
+    </div>
     <nav class="tabs" aria-label="화면 이동">
       <button class="tab is-active" aria-current="page">가족 일정</button>
       <button class="tab" disabled title="다음 단계에서 만들어요">아빠</button>
@@ -103,7 +108,67 @@
     </form>
   </dialog>
 
+  <!-- 가족 공유 설정 -->
+  <dialog id="shareDialog" class="sheet">
+    <div class="sheet-head">
+      <h3>가족과 함께 쓰기</h3>
+      <button class="icon-btn" data-close aria-label="닫기">✕</button>
+    </div>
+
+    <!-- Firebase 설정 전 -->
+    <section data-when="local">
+      <p>지금은 일정이 <strong>이 기기에만</strong> 저장돼요.</p>
+      <p class="muted">가족이 같은 달력을 보려면 <code>js/firebase-config.js</code>에 Firebase 설정을 넣어야 해요. 방법은 README에 있어요.</p>
+    </section>
+
+    <!-- 설정은 됐지만 가족 코드가 없을 때 -->
+    <section data-when="need-code">
+      <p>처음이라면 가족 달력을 새로 만들고, 초대 링크를 받았다면 링크로 들어오세요.</p>
+      <button id="createFamilyBtn" class="primary-btn wide">새 가족 달력 만들기</button>
+      <div class="divider"><span>또는</span></div>
+      <form id="joinForm" class="join-form">
+        <label class="field">
+          <span>초대 링크나 가족 코드</span>
+          <input name="code" autocomplete="off" placeholder="링크를 붙여넣으세요" />
+        </label>
+        <p id="joinError" class="form-error" role="alert"></p>
+        <button type="submit" class="text-btn wide">가족 달력 들어가기</button>
+      </form>
+    </section>
+
+    <!-- 연결된 뒤 -->
+    <section data-when="connected">
+      <p id="shareStatus" class="share-status"></p>
+      <label class="field">
+        <span>가족 초대 링크</span>
+        <input id="inviteLink" readonly />
+      </label>
+      <p class="muted">이 링크를 가족에게 보내 주세요. 링크를 연 기기는 같은 달력을 함께 보고 고칠 수 있어요. 링크를 아는 사람은 누구나 들어올 수 있으니 가족끼리만 나눠 주세요.</p>
+      <button id="copyLinkBtn" class="primary-btn wide">링크 복사</button>
+
+      <div id="moveLocalBox" class="move-local" hidden>
+        <p>이 기기에만 저장해 둔 일정이 <strong id="localCount"></strong>개 있어요.</p>
+        <button id="moveLocalBtn" class="text-btn wide">가족 달력으로 옮기기</button>
+      </div>
+
+      <details class="switch-family">
+        <summary>다른 가족 달력으로 바꾸기</summary>
+        <form id="switchForm" class="join-form">
+          <label class="field">
+            <span>초대 링크나 가족 코드</span>
+            <input name="code" autocomplete="off" />
+          </label>
+          <p id="switchError" class="form-error" role="alert"></p>
+          <button type="submit" class="text-btn wide">바꾸기</button>
+        </form>
+      </details>
+    </section>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
   <script src="js/holidays.js"></script>
+  <script src="js/firebase-config.js"></script>
   <script src="js/store.js"></script>
   <script src="js/app.js"></script>
 </body>

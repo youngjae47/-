@@ -41,7 +41,45 @@ button:disabled { cursor: not-allowed; }
   top: 0;
   z-index: 5;
 }
-.app-header h1 { margin: 0 0 10px; font-size: 19px; }
+.app-header h1 { margin: 0; font-size: 19px; }
+.title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+
+/* ---------- 공유 상태 ---------- */
+.sync-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 5px 12px; font-size: 13px;
+  white-space: nowrap;
+}
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #a8a29a; }
+.sync-badge[data-status="online"] .sync-dot { background: #2e9e6a; }
+.sync-badge[data-status="connecting"] .sync-dot,
+.sync-badge[data-status="offline"] .sync-dot { background: #e0a81e; }
+.sync-badge[data-status="error"] .sync-dot,
+.sync-badge[data-status="need-code"] .sync-dot { background: var(--sun); }
+.sync-badge[data-status="error"] { border-color: #f0c4c4; color: var(--sun); }
+
+.share-status { font-weight: 600; margin-top: 0; }
+.muted { color: var(--muted); font-size: 14px; }
+.wide { width: 100%; }
+.divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin: 16px 0; }
+.divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.join-form .text-btn { padding: 9px 14px; }
+#inviteLink { font-size: 13px; color: var(--muted); }
+.move-local { margin-top: 16px; padding: 12px; border-radius: 10px; background: #fff8e6; }
+.move-local p { margin: 0 0 8px; }
+.switch-family { margin-top: 16px; font-size: 14px; }
+.switch-family summary { cursor: pointer; color: var(--muted); }
+.switch-family form { margin-top: 10px; }
+code { background: #f0ede7; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+  background: var(--text); color: #fff; padding: 9px 16px; border-radius: 999px;
+  font-size: 14px; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  max-width: calc(100vw - 32px); text-align: center;
+}
+.toast.show { opacity: 1; }
 .tabs { display: flex; gap: 4px; overflow-x: auto; }
 .tab {
   border: 0;

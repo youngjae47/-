@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// 가족 스케쥴 Firestore 보안 규칙
+// - 로그인 없이, "가족 코드"를 아는 사람만 그 가족의 일정을 읽고 쓸 수 있다.
+// - 가족 코드는 24자리 무작위 문자라 짐작할 수 없다. (20자 미만 코드는 거절)
+// - 전체 가족 목록은 누구도 볼 수 없다. (families 컬렉션 자체에는 규칙이 없음)
+// - 일정 내용은 앱이 쓰는 모양(제목 40자, 메모 200자 등)만 허용한다.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function validCode(code) {
+      return code.size() >= 20 && code.size() <= 64 && code.matches('^[a-z0-9]+$');
+    }
+
+    function isDate(v) {
+      return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function validEvent(d) {
+      return d.keys().hasOnly(['title', 'member', 'start', 'end', 'time', 'memo', 'updatedAt'])
+        && d.keys().hasAll(['title', 'member', 'start', 'end', 'time', 'memo', 'updatedAt'])
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 40
+        && d.member in ['family', 'dad', 'mom', 'suhyun']
+        && isDate(d.start)
+        && d.end is string && (d.end == '' || (isDate(d.end) && d.end >= d.start))
+        && d.time is string && (d.time == '' || d.time.matches('^[0-9]{2}:[0-9]{2}$'))
+        && d.memo is string && d.memo.size() <= 200
+        && d.updatedAt == request.time;
+    }
+
+    match /families/{code}/events/{eventId} {
+      allow read, delete: if validCode(code);
+      allow create, update: if validCode(code) && validEvent(request.resource.data);
+    }
+  }
+}
